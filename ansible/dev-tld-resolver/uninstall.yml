@@ -1,0 +1,33 @@
+---
+- name: Uninstall dev-tld-resolver
+  hosts: localhost
+  become: yes
+
+  tasks:
+    - name: Remove dev-tld-resolver shared object
+      file:
+        path: /lib/libnss_dev_tld.so.2
+        state: absent
+
+    - name: Remove dev-tld-resolver
+      file:
+        path: "{{ downloads_directory }}/dev-tld-resolver"
+        state: absent
+
+    - name: Restore /etc/nsswitch.conf from backup
+      copy:
+        src: /etc/nsswitch.conf-old
+        dest: /etc/nsswitch.conf
+        mode: preserve
+        owner: root
+        force: true
+
+    - name: Remove /etc/nsswitch.conf-old backup
+      file:
+        path: /etc/nsswitch.conf-old
+        state: absent
+
+    - name: Remove .test dev-tld-resolver
+      file:
+        path: /etc/profile.d/dev-tld-resolver.sh
+        state: absent

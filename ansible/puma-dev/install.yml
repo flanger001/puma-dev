@@ -1,0 +1,86 @@
+---
+- name: Install Puma Dev
+  hosts: hellmachine
+  become: yes
+
+  collections:
+    - community.general
+
+  tasks:
+    - name: Announce
+      debug:
+        msg: Downloading Puma Dev
+
+    - name: Download zip
+      get_url:
+        url: https://github.com/puma/puma-dev/releases/download/v0.15/puma-dev-0.15-linux-amd64.tar.gz
+        dest: "{{ downloads_directory }}/puma-dev.tar.gz"
+
+    - name: Unzip
+      become_user: "{{ username }}"
+      unarchive:
+        src: "{{ downloads_directory }}/puma-dev.tar.gz"
+        dest: "{{ downloads_directory }}"
+
+    # NB: This next task generates the ~/.puma-dev and
+    # ~/.puma-dev-ssl directories, which we need for subsequent
+    # steps.
+
+    - name: Run puma-dev for the first time
+      become_user: "{{ username }}"
+      shell: |
+        {{ downloads_directory }}/puma-dev &
+        puma=$!
+        sleep 1
+        kill $puma
+
+    # puma-dev basic installation
+
+    - name: Install
+      copy:
+        src: "{{ downloads_directory }}/puma-dev"
+        dest: /usr/local/bin
+        owner: root
+        mode: 0777
+
+    - name: Create SSL certificate directory
+      file:
+        path: /usr/local/share/ca-certificates
+        state: directory
+
+    - name: Copy SSL certificate
+      copy:
+        src: "{{ targets.certificate_directory }}/cert.pem"
+        dest: /usr/local/share/ca-certificates/puma-dev-pem.crt
+
+    - name: Update CA certificates
+      command: update-ca-certificates
+
+    - name: Set capabilities
+      shell: "setcap CAP_NET_BIND_SERVICE=+eip {{ targets.binary_file }}"
+
+    # systemd
+
+    - name: Install service
+      template:
+        src: ./puma-dev.service.j2
+        dest: "{{ targets.service_file }}"
+
+    - name: Enable service
+      systemd:
+        daemon_reload: yes
+        state: started
+        enabled: yes
+        name: puma-dev
+
+    # cleanup
+
+    - name: Cleanup zip
+      file:
+        path: "{{ downloads_directory }}/puma-dev.tar.gz"
+        state: absent
+
+    - name: Cleanup binary
+      file:
+        path: "{{ downloads_directory }}/puma-dev"
+        state: absent

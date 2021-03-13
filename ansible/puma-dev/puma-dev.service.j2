@@ -1,0 +1,10 @@
+[Unit]
+After=network.target
+
+[Service]
+User={{ targets.user }}
+ExecStart={{ targets.binary_file }} -sysbind
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

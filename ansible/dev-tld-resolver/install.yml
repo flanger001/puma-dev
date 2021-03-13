@@ -1,0 +1,47 @@
+---
+- name: Install dev-tld-resolver
+  hosts: localhost
+  tags: install
+  become: yes
+
+  collections:
+    - community.general
+
+  tasks:
+    - name: Download dev-tld-resolver
+      git:
+        repo: https://github.com/puma/dev-tld-resolver.git
+        dest: "{{ downloads_directory }}/dev-tld-resolver"
+
+    - name: Make dev-tld-resolver
+      community.general.make:
+        chdir: "{{ downloads_directory }}/dev-tld-resolver/src"
+
+    - name: Install dev-tld-resolver
+      community.general.make:
+        chdir: "{{ downloads_directory }}/dev-tld-resolver/src"
+        target: install
+
+    - name: Add .test dev-tld-resolver
+      copy:
+        dest: /etc/profile.d/dev-tld-resolver.sh
+        content: export DEV_TLD_DOMAINS=test
+
+    - name: Back up /etc/nsswitch.conf
+      copy:
+        src: /etc/nsswitch.conf
+        dest: /etc/nsswitch.conf-old
+        mode: preserve
+        owner: root
+
+    - name: Add dev_tld to /etc/nsswitch.conf
+      lineinfile:
+        path: /etc/nsswitch.conf
+        regexp: '^hosts:(.*)$'
+        line: 'hosts:\1 dev_tld'
+        backrefs: yes
+
+    - name: cleanup dev-tld-resolver
+      file:
+        path: "{{ downloads_directory }}/dev-tld-resolver"
+        state: absent

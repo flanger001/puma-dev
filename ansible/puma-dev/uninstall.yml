@@ -1,0 +1,41 @@
+---
+- name: Uninstall Puma Dev
+  hosts: hellmachine
+  become: yes
+
+  tasks:
+    - name: Remove binary file
+      file:
+        path: "{{ targets.puma-dev.binary_file }}"
+        state: absent
+
+    - name: Remove app directory
+      file:
+        path: "{{ targets.puma-dev.app_directory }}"
+        state: absent
+
+    - name: Remove certificate directory
+      file:
+        path: "{{ targets.puma-dev.certificate_directory }}"
+        state: absent
+
+    - name: Remove CA certificate
+      file:
+        path: /usr/local/share/ca-certificates/puma-dev-pem.crt
+        state: absent
+
+    - name: Update CA certificates
+      command: update-ca-certificates
+
+    - name: Disable service
+      ignore_errors: yes
+      systemd:
+        daemon_reload: yes
+        state: stopped
+        enabled: no
+        name: puma-dev
+
+    - name: Uninstall service
+      file:
+        path: "{{ targets.puma-dev.service_file }}"
+        state: absent
